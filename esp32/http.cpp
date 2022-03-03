@@ -2,20 +2,10 @@
 
 namespace http
 {
-  template <class initialHTTPContent>
-  String toContent(initialHTTPContent data[])
+  String location(double longitude, double latitude)
   {
-    String content = "";
-    int len = sizeof(data);
-    char delim = '&';
-
-    for (int i = 0; i < len; i++)
-    {
-      if (i == len - 1)
-        delim = ' ';
-      content += String(i) + "=" + String(data[i]) + String(delim);
-    }
-    return content;
+    return String("lon") + "=" + String(longitude, 9) + String("&") +
+           String("lat") + "=" + String(latitude, 9) + String(" ");
   }
 
   String registerDevice(String macAdress)

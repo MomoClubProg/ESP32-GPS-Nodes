@@ -1,45 +1,56 @@
 #include "http.h"
 #include "network.h"
+#include "gps.h"
 #include "uenv.h"
 
 // HTTP Client
 WiFiClient client;
 
-// LED Pin
-short int signalPin = 2;
+// Wifi Signal LED Pin
+uint8_t signalPin = 2;
+
+// GPS
+GPSDevice gps;
+SoftwareSerial gpsSerial(16, 17);
 
 void setup()
 {
-  Serial.begin(115200);
 
+  // Serials
+  Serial.begin(BAUD_RATE);
+  gpsSerial.begin(9600);
+
+  // Wifi Signal LED Pin
   pinMode(signalPin, OUTPUT);
   digitalWrite(signalPin, HIGH);
 
-  String ip = network::connect(env::SSID, env::PASS, signalPin);
+  // Connect to network
+  IPAddress ip = network::connect(env::SSID, env::PASS, signalPin);
+  Serial.println("Connected " + network::IpToString(ip));
 
-  Serial.println("Connected " + ip);
+  // Connect, if fail, abort.
+  if (!client.connect(env::SERVER, env::PORT))
+    return;
 
-  // HTTP Client register to server
-  if (client.connect(env::SERVER, env::PORT))
-  {
-    client.println(http::GET("register", http::registerDevice(network::getMacAdress())));
-    client.println();
-  }
+  // Send the request
+  //             http://serverIP:port/register?id=MACADRRESS
+  client.println(http::GET("register", http::registerDevice(network::getMacAdress())));
+  client.println();
 }
 
-// Sample send data
-short int sampleData[] = {23, 54, 12, 34};
+gpsLocation out;
 
 void loop()
 {
-  // HTTP Client update data
-  if (client.connect(env::SERVER, env::PORT))
-  {
-    // TODO: get GPS data and convert to HTTPContent String
+  // Connect, if fail, abort.
+  if (!client.connect(env::SERVER, env::PORT))
+    return;
 
-    client.println(http::GET("hit", http::toContent<short>(sampleData)));
-    client.println();
+  out = gps.getLocation(gpsSerial);
 
-    delay(1000);
-  }
+  // Send the request
+  //             http://serverIP:port/hit?lon=LONGITUDE&lat=LATITUDE
+  client.println(http::GET("hit", http::location(out.lon, out.lat)));
+  client.println();
+  delay(UPDATE_DELAY);
 }
